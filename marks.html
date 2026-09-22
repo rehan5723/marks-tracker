@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>IMD 30th Matrix Exam Tracker</title>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
@@ -434,7 +438,17 @@ const TIMES = ["8 am-10 am", "10 am-12 n", "1 pm-3 pm", "3 pm-5 pm", "5 pm-7 pm"
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 let scores = JSON.parse(localStorage.getItem("matrix_exam_scores")) || {};
-const API_URL = "/api/scores";
+const firebaseConfigured = window.firebaseConfig && !window.firebaseConfig.apiKey.startsWith("YOUR_");
+let firebaseReady = null;
+
+if (firebaseConfigured) {
+  firebase.initializeApp(window.firebaseConfig);
+  firebaseReady = firebase.auth().signInAnonymously();
+}
+
+function scoreDocument() {
+  return firebase.firestore().collection("trackers").doc("girlfriend");
+}
 
 function setSaveState(message, isError = false) {
   const state = document.getElementById("save-state");
@@ -445,16 +459,17 @@ function setSaveState(message, isError = false) {
 async function saveScores() {
   localStorage.setItem("matrix_exam_scores", JSON.stringify(scores));
   setSaveState("Saving...");
+  if (!firebaseReady) {
+    setSaveState("Saved on this device", true);
+    updateUI();
+    return;
+  }
   try {
-    const response = await fetch(API_URL, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scores })
-    });
-    if (!response.ok) throw new Error("Save failed");
+    await firebaseReady;
+    await scoreDocument().set({ scores, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
     setSaveState("Saved to database");
   } catch (error) {
-    setSaveState("Saved on this device", true);
+    setSaveState("Saved on this device - Firebase unavailable", true);
   }
   updateUI();
 }
@@ -673,11 +688,17 @@ function clearData() {
 
 async function loadScores() {
   const localScores = { ...scores };
+  if (!firebaseReady) {
+    setSaveState("Saved on this device", true);
+    renderMatrix();
+    initCharts();
+    updateUI();
+    return;
+  }
   try {
-    const response = await fetch(API_URL);
-    if (!response.ok) throw new Error("Load failed");
-    const data = await response.json();
-    const databaseScores = data.scores || {};
+    await firebaseReady;
+    const snapshot = await scoreDocument().get();
+    const databaseScores = snapshot.exists ? snapshot.data().scores || {} : {};
     const hasDatabaseScores = Object.keys(databaseScores).length > 0;
     scores = hasDatabaseScores ? databaseScores : localScores;
     localStorage.setItem("matrix_exam_scores", JSON.stringify(scores));
@@ -685,15 +706,11 @@ async function loadScores() {
       setSaveState("Synced with database");
     } else {
       setSaveState("Syncing saved scores...");
-      await fetch(API_URL, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scores })
-      });
+      await scoreDocument().set({ scores, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
       setSaveState("Saved to database");
     }
   } catch (error) {
-    setSaveState("Using this device's saved scores", true);
+    setSaveState("Using this device's saved scores - Firebase unavailable", true);
   }
   renderMatrix();
   initCharts();
