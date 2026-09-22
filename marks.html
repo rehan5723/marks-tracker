@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IMD 30th Matrix Exam Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --card-bg: rgba(255, 255, 255, 0.88);
+      --text: #1d1d1f;
+      --muted: #6e6e73;
+      --border: rgba(60, 60, 67, 0.16);
+      
+      --comed: #2563eb;
+      --comed-light: #eff6ff;
+      --radio: #7c3aed;
+      --radio-light: #f5f3ff;
+      --psych: #059669;
+      --psych-light: #ecfdf5;
+
+      --pass: #16a34a;
+      --pass-bg: #dcfce7;
+      --pass-border: #86efac;
+      
+      --fail: #dc2626;
+      --fail-bg: #fee2e2;
+      --fail-border: #fca5a5;
+      --accent: #0071e3;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #ffffff 0, var(--bg) 48%, #eeeeF0 100%);
+      color: var(--text);
+      padding: 20px;
+      line-height: 1.4;
+      letter-spacing: -0.01em;
+    }
+
+    .container { max-width: 1400px; margin: 0 auto; }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      gap: 16px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+      backdrop-filter: blur(18px);
+    }
+
+    .header-copy { min-width: 0; }
+    .header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+    .save-state { color: var(--muted); font-size: 0.78rem; white-space: nowrap; }
+
+    h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.035em; }
+    .subtitle { color: var(--muted); font-size: 0.9rem; }
+
+    .btn-group { display: flex; gap: 8px; }
+    button {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #fff;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
+    }
+    button:hover { background: #f2f2f7; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08); }
+    button:active { transform: scale(0.98); }
+    button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    button.primary:hover { background: #0077ed; }
+
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .toolbar label { color: var(--muted); font-size: 0.82rem; font-weight: 700; }
+    .toolbar input, .toolbar select {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #fff;
+      padding: 9px 10px;
+      font: inherit;
+      min-height: 38px;
+      color: var(--text);
+      outline: none;
+    }
+    .toolbar input:focus, .toolbar select:focus, .score-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.16); }
+    .search-box { flex: 1 1 260px; }
+    .search-box input { width: 100%; }
+    .legend { display: flex; gap: 10px; color: var(--muted); font-size: 0.78rem; }
+    .legend span::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; background: var(--border); }
+    .legend .passed::before { background: var(--pass); }
+    .legend .failed::before { background: var(--fail); }
+
+    /* Matrix Styles */
+    .section-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .week-block {
+      background: var(--card-bg);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 16px;
+      margin-bottom: 24px;
+      overflow-x: auto;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.045);
+    }
+
+    .mobile-exams { display: none; }
+
+    .week-header {
+      font-weight: 700;
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      min-width: 900px;
+    }
+
+    .matrix-table th, .matrix-table td {
+      border: 1px solid var(--border);
+      padding: 8px;
+      vertical-align: top;
+      font-size: 0.85rem;
+    }
+
+    .matrix-table th {
+      background: #f5f5f7;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .matrix-table th span {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-weight: normal;
+    }
+
+    .time-col { width: 100px; text-align: center; font-weight: 600; background: #fafafa; }
+
+    /* Exam Cards inside Cell */
+    .exam-card {
+      padding: 8px;
+      border-radius: 6px;
+      border-left: 4px solid var(--border);
+      background: #f8fafc;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    }
+
+    .exam-card.comed { border-left-color: var(--comed); background: var(--comed-light); }
+    .exam-card.radio { border-left-color: var(--radio); background: var(--radio-light); }
+    .exam-card.psych { border-left-color: var(--psych); background: var(--psych-light); }
+
+    .exam-card.status-pass {
+      background: var(--pass-bg) !important;
+      border-left-color: var(--pass) !important;
+      border: 1px solid var(--pass-border);
+      border-left-width: 4px;
+    }
+
+    .exam-card.status-fail {
+      background: var(--fail-bg) !important;
+      border-left-color: var(--fail) !important;
+      border: 1px solid var(--fail-border);
+      border-left-width: 4px;
+    }
+
+    .subject-tag {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 4px;
+      border-radius: 3px;
+      width: max-content;
+    }
+    .comed .subject-tag { background: #dbeafe; color: var(--comed); }
+    .radio .subject-tag { background: #ede9fe; color: var(--radio); }
+    .psych .subject-tag { background: #d1fae5; color: var(--psych); }
+
+    .exam-title { font-weight: 700; font-size: 0.8rem; }
+    .exam-desc { font-size: 0.7rem; color: var(--muted); }
+
+    .input-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .score-input {
+      width: 100%;
+      padding: 4px 6px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      background: rgba(255, 255, 255, 0.9);
+      outline: none;
+    }
+
+    /* Analysis Dashboard */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      padding: 16px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+    }
+    .stat-card .label { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+    .stat-card .val { font-size: 1.8rem; font-weight: 800; margin-top: 4px; }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .chart-card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.045);
+    }
+
+    .chart-card h3 { font-size: 1rem; margin-bottom: 12px; }
+
+    @media (max-width: 700px) {
+      body { padding: 12px; }
+      header { align-items: flex-start; flex-direction: column; padding: 16px; }
+      .header-actions { width: 100%; justify-content: flex-start; }
+      .header-actions button { flex: 1; }
+      h1 { font-size: 1.25rem; }
+      .subtitle { font-size: 0.78rem; }
+      .btn-group { width: 100%; }
+      .btn-group button { min-height: 44px; }
+      .toolbar { align-items: stretch; gap: 8px; }
+      .toolbar label { display: flex; flex-direction: column; gap: 4px; }
+      .toolbar .search-box { flex-basis: 100%; }
+      .toolbar select { min-width: 150px; }
+      .legend { align-items: center; width: 100%; min-height: 30px; }
+      .week-block { padding: 12px; overflow: visible; margin-bottom: 14px; }
+      .week-header { font-size: 0.78rem; margin-bottom: 10px; }
+      .matrix-table { display: none; }
+      .mobile-exams { display: grid; gap: 10px; }
+      .mobile-exam {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 92px;
+        gap: 12px;
+        align-items: center;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--border);
+        border-radius: 8px;
+        background: #fff;
+      }
+      .mobile-exam.comed { border-left-color: var(--comed); }
+      .mobile-exam.radio { border-left-color: var(--radio); }
+      .mobile-exam.psych { border-left-color: var(--psych); }
+      .mobile-exam.status-pass { background: var(--pass-bg); border-color: var(--pass-border); border-left-color: var(--pass); }
+      .mobile-exam.status-fail { background: var(--fail-bg); border-color: var(--fail-border); border-left-color: var(--fail); }
+      .mobile-exam .exam-title { font-size: 0.9rem; }
+      .mobile-exam .exam-desc { font-size: 0.78rem; margin-top: 2px; }
+      .exam-meta { color: var(--muted); font-size: 0.75rem; margin-top: 6px; }
+      .mobile-exam .input-row { margin-top: 0; }
+      .mobile-exam .score-input { min-height: 46px; text-align: center; font-size: 1rem; }
+      .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .stat-card { padding: 12px; }
+      .stat-card .val { font-size: 1.45rem; }
+      .charts-grid { grid-template-columns: minmax(0, 1fr); }
+      .chart-card { padding: 14px; }
+      .section-title { font-size: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="header-copy">
+      <h1>Third Year Exam Matrix Tracker</h1>
+      <div class="subtitle">IMD 30th Horizontal Matrix </div>
+    </div>
+    <div class="header-actions">
+      <span class="save-state" id="save-state" aria-live="polite">Loading scores...</span>
+      <div class="btn-group">
+      <button onclick="fillDemoData()">Demo Scores</button>
+      <button onclick="clearData()">Clear All</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MATRIX SCHEDULE SECTION -->
+  <div class="section-title">Schedule Grid & Score Entry</div>
+  <div class="toolbar">
+    <label class="search-box">Find an exam
+      <input id="exam-search" type="search" placeholder="Search subject or exam..." oninput="renderMatrix()">
+    </label>
+    <label>Show
+      <select id="subject-filter" onchange="renderMatrix()">
+        <option value="all">All subjects</option>
+        <option value="comed">CoMed</option>
+        <option value="radio">Radiology</option>
+        <option value="psych">Psychiatry</option>
+      </select>
+    </label>
+    <div class="legend" aria-label="Score status legend"><span class="passed">Passed</span><span class="failed">Needs review</span></div>
+  </div>
+  <div id="matrix-container"></div>
+
+  <!-- PERFORMANCE ANALYSIS SECTION -->
+  <div class="section-title" style="margin-top: 40px;">Performance Analytics</div>
+  
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="label">Overall Average</div>
+      <div class="val" id="avg-score">--</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Passed Exams</div>
+      <div class="val" id="pass-count" style="color: var(--pass);">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Failed Exams</div>
+      <div class="val" id="fail-count" style="color: var(--fail);">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Completion Rate</div>
+      <div class="val" id="completion-rate">0%</div>
+    </div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <h3>Score Progression Over Time</h3>
+      <canvas id="trendChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Average Score by Subject</h3>
+      <canvas id="subjectChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+const EXAM_DATA = [
+  // Sept 14-19
+  { id: "rad_eval1", week: 1, day: "Saturday", date: "19-Sep-26", time: "3 pm-5 pm", subject: "radio", title: "1st Evaluation Exam", desc: "Radiology" },
+  
+  // Sept 21-26
+  { id: "rad_prelim", week: 2, day: "Tuesday", date: "22-Sep-26", time: "3 pm-5 pm", subject: "radio", title: "Prelim Exam", desc: "Radiology" },
+  { id: "psych_eval1", week: 2, day: "Wednesday", date: "23-Sep-26", time: "3 pm-5 pm", subject: "psych", title: "1st Evaluation Exam", desc: "Psychiatry" },
+  { id: "comed_eval1", week: 2, day: "Thursday", date: "24-Sep-26", time: "8 am-10 am", subject: "comed", title: "Evaluation Exam", desc: "Lectures #2-#7" },
+  { id: "psych_prelim", week: 2, day: "Friday", date: "25-Sep-26", time: "1 pm-3 pm", subject: "psych", title: "Prelim Exam", desc: "Psychiatry" },
+
+  // Sept 28 - Oct 3
+  { id: "rad_eval2", week: 3, day: "Tuesday", date: "29-Sep-26", time: "3 pm-5 pm", subject: "radio", title: "2nd Evaluation Exam", desc: "Radiology" },
+
+  // Oct 5 - Oct 10
+  { id: "comed_prelim", week: 4, day: "Thursday", date: "08-Oct-26", time: "8 am-10 am", subject: "comed", title: "Prelim Exam", desc: "Lectures #2-#12" },
+  { id: "comed_eval2", week: 4, day: "Friday", date: "09-Oct-26", time: "3 pm-5 pm", subject: "comed", title: "Evaluation Exam", desc: "Lectures #13-#16" },
+
+  // Oct 12 - Oct 17
+  { id: "rad_eval3", week: 5, day: "Tuesday", date: "13-Oct-26", time: "3 pm-5 pm", subject: "radio", title: "3rd Evaluation Exam", desc: "Radiology" },
+  { id: "comed_midterm", week: 5, day: "Thursday", date: "15-Oct-26", time: "3 pm-5 pm", subject: "comed", title: "Midterm Exam", desc: "Lectures #13-#21" },
+  { id: "rad_prefinal", week: 5, day: "Thursday", date: "15-Oct-26", time: "5 pm-7 pm", subject: "radio", title: "Pre-Final Exam", desc: "Radiology" },
+  { id: "rad_midterm", week: 5, day: "Friday", date: "16-Oct-26", time: "1 pm-3 pm", subject: "radio", title: "Midterm Exam", desc: "Radiology" },
+  { id: "rad_compre", week: 5, day: "Saturday", date: "17-Oct-26", time: "1 pm-3 pm", subject: "radio", title: "Compre Exam", desc: "Radiology" },
+
+  // Oct 19 - Oct 24
+  { id: "psych_eval2", week: 6, day: "Monday", date: "19-Oct-26", time: "1 pm-3 pm", subject: "psych", title: "2nd Evaluation Exam", desc: "Psychiatry" },
+  { id: "psych_midterm", week: 6, day: "Tuesday", date: "20-Oct-26", time: "3 pm-5 pm", subject: "psych", title: "Midterm Exam", desc: "Psychiatry" },
+  { id: "comed_eval3", week: 6, day: "Saturday", date: "24-Oct-26", time: "8 am-10 am", subject: "comed", title: "Evaluation Exam", desc: "Lectures #22-#26" },
+
+  // Oct 26 - Oct 31
+  { id: "psych_eval3", week: 7, day: "Monday", date: "26-Oct-26", time: "3 pm-5 pm", subject: "psych", title: "3rd Evaluation Exam", desc: "Psychiatry" },
+  { id: "psych_prefinal", week: 7, day: "Wednesday", date: "28-Oct-26", time: "1 pm-3 pm", subject: "psych", title: "Pre-Final Exam", desc: "Psychiatry" },
+  { id: "comed_prefinal", week: 7, day: "Thursday", date: "29-Oct-26", time: "10 am-12 n", subject: "comed", title: "Pre-Final Exam", desc: "Lectures #22-#30" },
+  { id: "psych_compre", week: 7, day: "Thursday", date: "29-Oct-26", time: "1 pm-3 pm", subject: "psych", title: "Compre Exam", desc: "Psychiatry" },
+  { id: "comed_compre", week: 7, day: "Saturday", date: "31-Oct-26", time: "8 am-10 am", subject: "comed", title: "Compre Exam", desc: "Lectures #2-#30" }
+];
+
+const WEEKS = [
+  { id: 1, title: "Week 1 (Sept 14 - Sept 19)", dates: ["14-Sep-26","15-Sep-26","16-Sep-26","17-Sep-26","18-Sep-26","19-Sep-26"] },
+  { id: 2, title: "Week 2 (Sept 21 - Sept 26)", dates: ["21-Sep-26","22-Sep-26","23-Sep-26","24-Sep-26","25-Sep-26","26-Sep-26"] },
+  { id: 3, title: "Week 3 (Sept 28 - Oct 03)", dates: ["28-Sep-26","29-Sep-26","30-Sep-26","01-Oct-26","02-Oct-26","03-Oct-26"] },
+  { id: 4, title: "Week 4 (Oct 05 - Oct 10)", dates: ["05-Oct-26","06-Oct-26","07-Oct-26","08-Oct-26","09-Oct-26","10-Oct-26"] },
+  { id: 5, title: "Week 5 (Oct 12 - Oct 17)", dates: ["12-Oct-26","13-Oct-26","14-Oct-26","15-Oct-26","16-Oct-26","17-Oct-26"] },
+  { id: 6, title: "Week 6 (Oct 19 - Oct 24)", dates: ["19-Oct-26","20-Oct-26","21-Oct-26","22-Oct-26","23-Oct-26","24-Oct-26"] },
+  { id: 7, title: "Week 7 (Oct 26 - Oct 31)", dates: ["26-Oct-26","27-Oct-26","28-Oct-26","29-Oct-26","30-Oct-26","31-Oct-26"] }
+];
+
+const TIMES = ["8 am-10 am", "10 am-12 n", "1 pm-3 pm", "3 pm-5 pm", "5 pm-7 pm"];
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+let scores = JSON.parse(localStorage.getItem("matrix_exam_scores")) || {};
+const API_URL = "/api/scores";
+
+function setSaveState(message, isError = false) {
+  const state = document.getElementById("save-state");
+  state.textContent = message;
+  state.style.color = isError ? "var(--fail)" : "var(--muted)";
+}
+
+async function saveScores() {
+  localStorage.setItem("matrix_exam_scores", JSON.stringify(scores));
+  setSaveState("Saving...");
+  try {
+    const response = await fetch(API_URL, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scores })
+    });
+    if (!response.ok) throw new Error("Save failed");
+    setSaveState("Saved to database");
+  } catch (error) {
+    setSaveState("Saved on this device", true);
+  }
+  updateUI();
+}
+
+function renderMatrix() {
+  const container = document.getElementById("matrix-container");
+  container.innerHTML = "";
+
+  WEEKS.forEach(week => {
+    // Check if week has any exams
+    const search = document.getElementById("exam-search")?.value.toLowerCase().trim() || "";
+    const subject = document.getElementById("subject-filter")?.value || "all";
+    const weekExams = EXAM_DATA.filter(e => e.week === week.id && (subject === "all" || e.subject === subject) && (!search || `${e.title} ${e.desc} ${e.subject}`.toLowerCase().includes(search)));
+    if (weekExams.length === 0) return;
+
+    let html = `
+      <div class="week-block">
+        <div class="week-header">${week.title}</div>
+        <table class="matrix-table">
+          <thead>
+            <tr>
+              <th class="time-col">Time</th>
+              ${DAYS.map((d, i) => `<th>${d}<span>${week.dates[i]}</span></th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    TIMES.forEach(time => {
+      let rowHasExam = weekExams.some(e => e.time === time);
+      if (!rowHasExam) return; // Skip empty time rows to keep matrix compact
+
+      html += `<tr><td class="time-col">${time}</td>`;
+
+      DAYS.forEach((day, dayIdx) => {
+        const dateStr = week.dates[dayIdx];
+        const exam = EXAM_DATA.find(e => e.date === dateStr && e.time === time && (subject === "all" || e.subject === subject) && (!search || `${e.title} ${e.desc} ${e.subject}`.toLowerCase().includes(search)));
+
+        html += `<td>`;
+        if (exam) {
+          const val = scores[exam.id] !== undefined ? scores[exam.id] : "";
+          let statusClass = "";
+          if (val !== "") {
+            statusClass = Number(val) >= 75 ? "status-pass" : "status-fail";
+          }
+
+          html += `
+            <div class="exam-card ${exam.subject} ${statusClass}" data-exam-id="${exam.id}">
+              <span class="subject-tag">${exam.subject}</span>
+              <div class="exam-title">${exam.title}</div>
+              <div class="exam-desc">${exam.desc}</div>
+              <div class="input-row">
+                <input type="number" 
+                       class="score-input" 
+                       placeholder="Score" 
+                       min="0" max="100" 
+                       value="${val}" 
+                       oninput="handleInput('${exam.id}', this.value)">
+              </div>
+            </div>
+          `;
+        }
+        html += `</td>`;
+      });
+
+      html += `</tr>`;
+    });
+
+    html += `</tbody></table>
+      <div class="mobile-exams">${weekExams.map(exam => {
+        const val = scores[exam.id] !== undefined ? scores[exam.id] : "";
+        const statusClass = val === "" ? "" : (Number(val) >= 75 ? "status-pass" : "status-fail");
+        return `
+          <div class="mobile-exam ${exam.subject} ${statusClass}" data-exam-id="${exam.id}">
+            <div>
+              <span class="subject-tag">${exam.subject}</span>
+              <div class="exam-title">${exam.title}</div>
+              <div class="exam-desc">${exam.desc}</div>
+              <div class="exam-meta">${exam.day}, ${exam.date} - ${exam.time}</div>
+            </div>
+            <div class="input-row">
+              <input type="number" class="score-input" placeholder="Score" min="0" max="100" value="${val}" oninput="handleInput('${exam.id}', this.value)">
+            </div>
+          </div>`;
+      }).join("")}</div></div>`;
+    container.innerHTML += html;
+  });
+}
+
+function handleInput(id, val) {
+  if (val === "") {
+    delete scores[id];
+  } else {
+    scores[id] = Math.min(100, Math.max(0, Number(val)));
+  }
+  saveScores();
+}
+
+function updateUI() {
+  // Update card styles dynamically without full rerender to keep focus
+  EXAM_DATA.forEach(e => {
+    document.querySelectorAll(`[data-exam-id="${e.id}"]`).forEach(card => {
+      card.classList.remove("status-pass", "status-fail");
+      if (scores[e.id] !== undefined) {
+        card.classList.add(scores[e.id] >= 75 ? "status-pass" : "status-fail");
+      }
+    });
+  });
+
+  // Calculate stats
+  const enteredIds = Object.keys(scores);
+  const totalEntered = enteredIds.length;
+  
+  if (totalEntered === 0) {
+    document.getElementById("avg-score").innerText = "--";
+    document.getElementById("pass-count").innerText = "0";
+    document.getElementById("fail-count").innerText = "0";
+    document.getElementById("completion-rate").innerText = "0%";
+  } else {
+    const vals = Object.values(scores);
+    const avg = vals.reduce((a, b) => a + b, 0) / totalEntered;
+    const passed = vals.filter(v => v >= 75).length;
+    const failed = totalEntered - passed;
+
+    document.getElementById("avg-score").innerText = avg.toFixed(1) + "%";
+    document.getElementById("pass-count").innerText = passed;
+    document.getElementById("fail-count").innerText = failed;
+    document.getElementById("completion-rate").innerText = Math.round((totalEntered / EXAM_DATA.length) * 100) + "%";
+  }
+
+  updateCharts();
+}
+
+let trendChart, subjectChart;
+
+function initCharts() {
+  const ctx1 = document.getElementById('trendChart').getContext('2d');
+  trendChart = new Chart(ctx1, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Exam Score',
+        data: [],
+        borderColor: '#2563eb',
+        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+        fill: true,
+        tension: 0.2
+      }]
+    },
+    options: {
+      scales: {
+        y: { min: 0, max: 100 }
+      }
+    }
+  });
+
+  const ctx2 = document.getElementById('subjectChart').getContext('2d');
+  subjectChart = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: ['CoMed', 'Radiology', 'Psychiatry'],
+      datasets: [{
+        label: 'Average Score',
+        data: [0, 0, 0],
+        backgroundColor: ['#2563eb', '#7c3aed', '#059669']
+      }]
+    },
+    options: {
+      scales: {
+        y: { min: 0, max: 100 }
+      }
+    }
+  });
+}
+
+function updateCharts() {
+  // Trend Chart Data
+  const chronExams = EXAM_DATA.filter(e => scores[e.id] !== undefined);
+  trendChart.data.labels = chronExams.map(e => `${e.date} (${e.title})`);
+  trendChart.data.datasets[0].data = chronExams.map(e => scores[e.id]);
+  trendChart.update();
+
+  // Subject Chart Data
+  const subjects = ['comed', 'radio', 'psych'];
+  const subjAvgs = subjects.map(s => {
+    const sExams = EXAM_DATA.filter(e => e.subject === s && scores[e.id] !== undefined);
+    if (sExams.length === 0) return 0;
+    return sExams.reduce((acc, e) => acc + scores[e.id], 0) / sExams.length;
+  });
+
+  subjectChart.data.datasets[0].data = subjAvgs;
+  subjectChart.update();
+}
+
+function fillDemoData() {
+  scores = {
+    "rad_eval1": 82,
+    "rad_prelim": 74,
+    "psych_eval1": 88,
+    "comed_eval1": 90,
+    "psych_prelim": 68,
+    "rad_eval2": 80,
+    "comed_prelim": 78
+  };
+  saveScores();
+  renderMatrix();
+}
+
+function clearData() {
+  if (!confirm("Clear every entered score?")) return;
+  scores = {};
+  saveScores();
+  renderMatrix();
+}
+
+async function loadScores() {
+  const localScores = { ...scores };
+  try {
+    const response = await fetch(API_URL);
+    if (!response.ok) throw new Error("Load failed");
+    const data = await response.json();
+    const databaseScores = data.scores || {};
+    const hasDatabaseScores = Object.keys(databaseScores).length > 0;
+    scores = hasDatabaseScores ? databaseScores : localScores;
+    localStorage.setItem("matrix_exam_scores", JSON.stringify(scores));
+    if (hasDatabaseScores || Object.keys(localScores).length === 0) {
+      setSaveState("Synced with database");
+    } else {
+      setSaveState("Syncing saved scores...");
+      await fetch(API_URL, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scores })
+      });
+      setSaveState("Saved to database");
+    }
+  } catch (error) {
+    setSaveState("Using this device's saved scores", true);
+  }
+  renderMatrix();
+  initCharts();
+  updateUI();
+}
+
+loadScores();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: marks-tracker
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_PATH
+        value: /var/data/marks.db
+    disk:
+      name: marks-data
+      mountPath: /var/data
+      sizeGB: 1

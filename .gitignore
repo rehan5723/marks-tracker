@@ -1,0 +1,4 @@
+node_modules/
+marks.db
+marks.db-shm
+marks.db-wal
